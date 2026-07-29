@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "configlib",
+	"version": "${version}",
+	"name": "ConfigLib",
+	"description": "Configuration Library",
+	"authors": [
+		"a0fefd"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/configlib/icon.svg",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+          "com.a0fefd.client.ConfigClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "configlib.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
