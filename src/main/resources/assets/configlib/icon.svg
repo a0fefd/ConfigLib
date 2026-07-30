@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+
+  <rect width="128" height="128" fill="#0a1a3c" rx="8"/>
+
+  <text font-family="Mono, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#a0fefd">
+    <tspan x="50%" dy="58">
+      a0fefd's
+    </tspan>
+    <tspan x="50%" dy="1.4em">
+      ConfigLib
+    </tspan>
+  </text>
+</svg>

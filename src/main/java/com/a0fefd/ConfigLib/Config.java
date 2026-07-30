@@ -1,4 +1,4 @@
-package com.a0fefd.client.ConfigLib;
+package com.a0fefd.ConfigLib;
 
 import com.google.gson.*;
 import net.fabricmc.loader.api.FabricLoader;
