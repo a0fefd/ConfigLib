@@ -14,17 +14,6 @@
 	"license": "CC0-1.0",
 	"icon": "assets/configlib/icon.svg",
 	"environment": "client",
-	"entrypoints": {
-		"client": [
-          "com.a0fefd.client.ConfigClient"
-		]
-	},
-	"mixins": [
-		{
-			"config": "configlib.client.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
 		"fabricloader": ">=0.19.3",
 		"minecraft": "~26.1.2",
