@@ -3,14 +3,26 @@ package com.a0fefd.ConfigLib;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class ConfigBuilder {
     private List<ConfigOption<?>> optionList;
+    private final Map<String, Integer> categoryIndex = new HashMap<>();
 
     public ConfigBuilder(@Nullable List<ConfigOption<?>> optionList) {
         this.optionList = optionList == null ? new ArrayList<>() : new ArrayList<>(optionList);
+    }
+
+    // Categories with no explicit index keep their discovery order, after all indexed ones.
+    public void setCategoryIndex(String category, int index) {
+        categoryIndex.put(category, index);
+    }
+
+    public @Nullable Integer getCategoryIndex(String category) {
+        return categoryIndex.get(category);
     }
 
     public void add(ConfigOption<?> option) {

@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,6 +49,10 @@ public class ConfigScreen extends Screen {
             seen.add(option.category());
         }
         categories.addAll(seen);
+        categories.sort(Comparator.comparingInt(category -> {
+            Integer index = config.builder.getCategoryIndex(category);
+            return index != null ? index : Integer.MAX_VALUE;
+        }));
         if (selectedCategory == null || !categories.contains(selectedCategory)) {
             selectedCategory = categories.isEmpty() ? null : categories.get(0);
         }
@@ -102,10 +107,9 @@ public class ConfigScreen extends Screen {
     private AbstractWidget buildControl(ConfigOption<?> option, int x, int y) {
         return switch (option.optionType()) {
             case BOOL -> buildBoolControl((ConfigOption<Boolean>) option, x, y);
-            case INT -> buildIntControl((ConfigOption<Integer>) option, x, y);
-            case FLOAT -> buildFloatControl((ConfigOption<Float>) option, x, y);
+            case NUM -> buildNumControl(option, x, y);
             case ENUM -> buildEnumControl(option, x, y);
-            case LIST -> buildListControl((ConfigOption<List<String>>) option, x, y);
+            case LIST -> buildListControl(option, x, y);
             case STR -> buildStrControl((ConfigOption<String>) option, x, y);
         };
     }
@@ -117,29 +121,31 @@ public class ConfigScreen extends Screen {
                         (btn, value) -> config.builder.set(option.key(), value));
     }
 
-    private AbstractWidget buildIntControl(ConfigOption<Integer> option, int x, int y) {
-        int current = option.currentValue() != null ? option.currentValue() : (option.defaultValue() != null ? option.defaultValue() : 0);
+    private AbstractWidget buildNumControl(ConfigOption<?> option, int x, int y) {
+        Object currentRaw = option.currentValue() != null ? option.currentValue() : option.defaultValue();
+        double current = currentRaw instanceof Number n ? n.doubleValue() : 0;
+
         if (option.min() != null && option.max() != null) {
-            int min = option.min();
-            int max = option.max();
-            double sliderValue = max == min ? 0 : (double) (current - min) / (max - min);
-            return new AbstractSliderButton(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(String.valueOf(current)), sliderValue) {
+            double min = option.min().doubleValue();
+            double max = option.max().doubleValue();
+            double sliderValue = max == min ? 0 : (current - min) / (max - min);
+            return new AbstractSliderButton(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(formatNum(current)), sliderValue) {
                 @Override
                 protected void updateMessage() {
-                    setMessage(Component.literal(String.valueOf(min + Math.round((max - min) * this.value))));
+                    setMessage(Component.literal(formatNum(min + (max - min) * this.value)));
                 }
 
                 @Override
                 protected void applyValue() {
-                    config.builder.set(option.key(), min + (int) Math.round((max - min) * this.value));
+                    config.builder.set(option.key(), min + (max - min) * this.value);
                 }
             };
         }
         EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
-        field.setValue(String.valueOf(current));
+        field.setValue(formatNum(current));
         field.setResponder(text -> {
             try {
-                config.builder.set(option.key(), Integer.parseInt(text.trim()));
+                config.builder.set(option.key(), Double.parseDouble(text.trim()));
             } catch (NumberFormatException ignored) {
                 //
             }
@@ -147,34 +153,13 @@ public class ConfigScreen extends Screen {
         return field;
     }
 
-    private AbstractWidget buildFloatControl(ConfigOption<Float> option, int x, int y) {
-        float current = option.currentValue() != null ? option.currentValue() : (option.defaultValue() != null ? option.defaultValue() : 0f);
-        if (option.min() != null && option.max() != null) {
-            float min = option.min();
-            float max = option.max();
-            double sliderValue = max == min ? 0 : (current - min) / (max - min);
-            return new AbstractSliderButton(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(String.format("%.2f", current)), sliderValue) {
-                @Override
-                protected void updateMessage() {
-                    setMessage(Component.literal(String.format("%.2f", min + (max - min) * this.value)));
-                }
-
-                @Override
-                protected void applyValue() {
-                    config.builder.set(option.key(), (float) (min + (max - min) * this.value));
-                }
-            };
-        }
-        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
-        field.setValue(String.valueOf(current));
-        field.setResponder(text -> {
-            try {
-                config.builder.set(option.key(), Float.parseFloat(text.trim()));
-            } catch (NumberFormatException ignored) {
-                //
-            }
-        });
-        return field;
+    // NUM is stored/parsed as double throughout (see Config.load(), which round-trips JSON
+    // numbers as Double regardless of the declared Class<T>) so there's one numeric type to
+    // reason about instead of Integer/Float diverging from what Gson hands back after a reload.
+    private static String formatNum(double value) {
+        return value == Math.rint(value) && !Double.isInfinite(value)
+                ? String.valueOf((long) value)
+                : String.format("%.2f", value);
     }
 
     private AbstractWidget buildStrControl(ConfigOption<String> option, int x, int y) {
@@ -195,20 +180,39 @@ public class ConfigScreen extends Screen {
                 (btn, value) -> config.builder.set(option.key(), value));
     }
 
-    private AbstractWidget buildListControl(ConfigOption<List<String>> option, int x, int y) {
-        List<String> current = option.currentValue() != null ? option.currentValue() : option.defaultValue();
+    private AbstractWidget buildListControl(ConfigOption<?> option, int x, int y) {
+        Object currentRaw = option.currentValue() != null ? option.currentValue() : option.defaultValue();
+        List<?> current = currentRaw instanceof List<?> list ? list : null;
         EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
         field.setMaxLength(2048);
-        field.setValue(current != null ? String.join(", ", current) : "");
+        if (current != null) {
+            StringBuilder joined = new StringBuilder();
+            for (int i = 0; i < current.size(); i++) {
+                if (i > 0) joined.append(", ");
+                joined.append(current.get(i));
+            }
+            field.setValue(joined.toString());
+        }
         field.setResponder(text -> {
-            List<String> values = new ArrayList<>();
+            List<Object> values = new ArrayList<>();
             for (String part : text.split(",")) {
                 String trimmed = part.trim();
-                if (!trimmed.isEmpty()) values.add(trimmed);
+                if (!trimmed.isEmpty()) values.add(parseListElement(trimmed));
             }
             config.builder.set(option.key(), values);
         });
         return field;
+    }
+
+    // List elements have no per-element type info (ConfigOption<T> only carries one Class<T> for
+    // the whole list), and Gson round-trips JSON numbers as Double regardless of what was written,
+    // so numeric entries are kept as Double (matching NUM) rather than guessing Integer vs Double.
+    private static Object parseListElement(String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException ignored) {
+            return text;
+        }
     }
 
     @Override
@@ -224,9 +228,9 @@ public class ConfigScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        graphics.centeredText(font, title, width / 2, 8, 0xFFFFFF);
+        graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
         for (LabelEntry entry : visibleLabels) {
-            graphics.text(font, entry.label, entry.x, entry.y, 0xFFFFFF);
+            graphics.text(font, entry.label, entry.x, entry.y, 0xFFFFFFFF);
         }
     }
 

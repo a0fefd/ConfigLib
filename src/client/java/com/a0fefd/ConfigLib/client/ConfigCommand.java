@@ -16,7 +16,10 @@ public class ConfigCommand {
     private static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, Config config) {
         dispatcher.register(ClientCommands.literal(config.MOD_ID)
                 .executes(context -> {
-                    Minecraft.getInstance().setScreen(new ConfigScreen(config, null));
+                    // ChatScreen.sendMessage() closes itself with setScreen(null) right after this
+                    // callback returns, which would immediately undo an open() called here.
+                    Minecraft.getInstance().execute(() ->
+                            Minecraft.getInstance().setScreen(new ConfigScreen(config, null)));
                     return 1;
                 }));
     }
