@@ -27,11 +27,11 @@
         {
           "name": "configlib-1.0.0.jar",
           "url": "configlib-1.0.0.jar",
-          "size": 8729,
-          "sha512": "5002f2d5fa23ff304351c6d684f94e289a6ff402dced9d25ff249fa727a1278ed2b5a508b320d480d4360e273fb3745cbc105808147184df21ea3d4253567951",
-          "sha256": "910b104b4bbfe5c818c720a7a1c5ed17a10adec5481efb9e982353c77cd1a450",
-          "sha1": "e2289399da04149aa817c4c4a973affe7e39b24c",
-          "md5": "f2cdb9a210601483b47389d918a3ffeb"
+          "size": 21584,
+          "sha512": "3453264059d7b83bbc866a5543992224d3b5ac2065dbe4b6dafeb4b38435d968935e52b4a0335ca4989acb42dc4431fd7d8e1a3b62ee7f136edcac45702aa5b7",
+          "sha256": "0df0a20aea7e10cd9665c66d4cf5030cb306affdacde82a2e950c79120782b1f",
+          "sha1": "238ef9da55bf489968ea7d77ce6d5b916499a9d1",
+          "md5": "1e338510ea5afc7cdbf71da898dc2083"
         }
       ]
     },
@@ -64,11 +64,11 @@
         {
           "name": "configlib-1.0.0.jar",
           "url": "configlib-1.0.0.jar",
-          "size": 8729,
-          "sha512": "5002f2d5fa23ff304351c6d684f94e289a6ff402dced9d25ff249fa727a1278ed2b5a508b320d480d4360e273fb3745cbc105808147184df21ea3d4253567951",
-          "sha256": "910b104b4bbfe5c818c720a7a1c5ed17a10adec5481efb9e982353c77cd1a450",
-          "sha1": "e2289399da04149aa817c4c4a973affe7e39b24c",
-          "md5": "f2cdb9a210601483b47389d918a3ffeb"
+          "size": 21584,
+          "sha512": "3453264059d7b83bbc866a5543992224d3b5ac2065dbe4b6dafeb4b38435d968935e52b4a0335ca4989acb42dc4431fd7d8e1a3b62ee7f136edcac45702aa5b7",
+          "sha256": "0df0a20aea7e10cd9665c66d4cf5030cb306affdacde82a2e950c79120782b1f",
+          "sha1": "238ef9da55bf489968ea7d77ce6d5b916499a9d1",
+          "md5": "1e338510ea5afc7cdbf71da898dc2083"
         }
       ]
     },
@@ -84,11 +84,11 @@
         {
           "name": "configlib-1.0.0-sources.jar",
           "url": "configlib-1.0.0-sources.jar",
-          "size": 3658,
-          "sha512": "9d31431a6071df40e08c73a67f4a5c2c99e607065feef6cb62e66c4dfaeb5df0f78296b59841d01c90e31ea7a173b04abf41b4a58fd21b1b60f83cc93383adfc",
-          "sha256": "951098094958bd785e6de965e2f329ce4d63869fc1fa045f89caf4e3ff026e50",
-          "sha1": "4ac2444c979b6a596743861c96c2a9b2e7bcf9d8",
-          "md5": "87cb340a312e2d8ef46402a93b5cf0ea"
+          "size": 7007,
+          "sha512": "3e72c329856e296f7400609682fc96779f5d3fe96a3bbb939c64c2c51fa442e149649cf154f89af414313ff8c9a99198b2296793ab39cdaf3403cbeeca5d35dd",
+          "sha256": "bcea2795413897440800cce00c2faeb5b647873a7739dfeb8519de42ea72cb78",
+          "sha1": "de2f21659ebd16c893451757ba0cc33a619c0241",
+          "md5": "9cb447540d1863f9a50cfcf89ba2f119"
         }
       ]
     }
