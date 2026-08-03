@@ -54,6 +54,24 @@ public class ConfigBuilder {
         }
     }
 
+    public ConfigOption<?> get(int i) {
+        try {
+            return optionList.get(i);
+        } catch (Exception e) {
+            //
+        }
+        return null;
+    }
+
+    public ConfigOption<?> get(String key) {
+        for (int i = 0; i < optionList.size(); i++) {
+            ConfigOption<?> option = optionList.get(i);
+            if (!Objects.equals(option.key(), key)) continue;
+            return get(i);
+        }
+        return null;
+    }
+
     public List<ConfigOption<?>> getOptionList() {
         return optionList;
     }

@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "configlib",
-	"version": "${version}",
+	"version": "1.0.0",
 	"name": "ConfigLib",
 	"description": "Configuration Library",
 	"authors": [
