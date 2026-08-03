@@ -23,6 +23,7 @@ public class ConfigScreen extends Screen {
     private static final int TAB_HEIGHT = 20;
     private static final int LIST_TOP = 50;
     private static final int ENTRY_HEIGHT = 22;
+    private static final int HEADING_HEIGHT = 16;
     private static final int ENTRY_WIDTH = 240;
     private static final int CONTROL_WIDTH = 100;
     private static final int BOTTOM_MARGIN = 30;
@@ -34,6 +35,7 @@ public class ConfigScreen extends Screen {
     private int scrollOffset = 0;
 
     private final List<LabelEntry> visibleLabels = new ArrayList<>();
+    private final List<HeadingEntry> visibleHeadings = new ArrayList<>();
 
     public ConfigScreen(Config config, @Nullable Screen parent) {
         super(Component.literal(config.MOD_ID));
@@ -62,6 +64,7 @@ public class ConfigScreen extends Screen {
     private void rebuildConfigWidgets() {
         clearWidgets();
         visibleLabels.clear();
+        visibleHeadings.clear();
 
         int tabX = 8;
         for (String category : categories) {
@@ -82,25 +85,54 @@ public class ConfigScreen extends Screen {
         int labelX = centerX - ENTRY_WIDTH / 2;
         int controlX = centerX + ENTRY_WIDTH / 2 - CONTROL_WIDTH;
 
-        List<ConfigOption<?>> options = new ArrayList<>();
+        // A heading row is inserted whenever an option's sub-category differs from the
+        // previous option's, grouping consecutive same-sub-category options under it.
+        List<Row> rows = new ArrayList<>();
+        String lastSubCategory = null;
         for (ConfigOption<?> option : config.builder.getOptionList()) {
-            if (option.category().equals(selectedCategory)) options.add(option);
+            if (!option.category().equals(selectedCategory)) continue;
+            String subCategory = option.subCategory();
+            if (subCategory != null && !subCategory.equals(lastSubCategory)) {
+                rows.add(new Row.Heading(subCategory));
+            }
+            lastSubCategory = subCategory;
+            rows.add(new Row.OptionRow(option));
         }
 
-        int maxScroll = Math.max(0, options.size() * ENTRY_HEIGHT - (listBottom - LIST_TOP));
+        int totalHeight = 0;
+        for (Row row : rows) totalHeight += row instanceof Row.Heading ? HEADING_HEIGHT : ENTRY_HEIGHT;
+        int maxScroll = Math.max(0, totalHeight - (listBottom - LIST_TOP));
         scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
 
-        for (int i = 0; i < options.size(); i++) {
-            int y = LIST_TOP + i * ENTRY_HEIGHT - scrollOffset;
-            if (y + ENTRY_HEIGHT < LIST_TOP || y > listBottom) continue;
+        int y = LIST_TOP - scrollOffset;
+        for (Row row : rows) {
+            int rowHeight = row instanceof Row.Heading ? HEADING_HEIGHT : ENTRY_HEIGHT;
+            if (y + rowHeight < LIST_TOP || y > listBottom) {
+                y += rowHeight;
+                continue;
+            }
 
-            ConfigOption<?> option = options.get(i);
-            visibleLabels.add(new LabelEntry(option.key(), labelX, y + 6));
-            addRenderableWidget(buildControl(option, controlX, y));
+            switch (row) {
+                case Row.Heading heading -> visibleHeadings.add(new HeadingEntry(heading.text(), centerX, y + 6));
+                case Row.OptionRow optionRow -> {
+                    ConfigOption<?> option = optionRow.option();
+                    visibleLabels.add(new LabelEntry(option.displayName(), labelX, y + 6));
+                    addRenderableWidget(buildControl(option, controlX, y));
+                }
+            }
+            y += rowHeight;
         }
 
         addRenderableWidget(Button.builder(Component.literal("Done"), btn -> onClose())
                 .bounds(centerX - 50, height - 24, 100, 20).build());
+    }
+
+    private sealed interface Row {
+        record Heading(String text) implements Row {
+        }
+
+        record OptionRow(ConfigOption<?> option) implements Row {
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -117,6 +149,7 @@ public class ConfigScreen extends Screen {
     private AbstractWidget buildBoolControl(ConfigOption<Boolean> option, int x, int y) {
         boolean current = option.currentValue() != null ? option.currentValue() : Boolean.TRUE.equals(option.defaultValue());
         return CycleButton.onOffBuilder(current)
+                .displayOnlyValue()
                 .create(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(""),
                         (btn, value) -> config.builder.set(option.key(), value));
     }
@@ -141,7 +174,7 @@ public class ConfigScreen extends Screen {
                 }
             };
         }
-        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
+        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.displayName()));
         field.setValue(formatNum(current));
         field.setResponder(text -> {
             try {
@@ -163,7 +196,7 @@ public class ConfigScreen extends Screen {
     }
 
     private AbstractWidget buildStrControl(ConfigOption<String> option, int x, int y) {
-        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
+        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.displayName()));
         field.setValue(option.currentValue() != null ? option.currentValue() : (option.defaultValue() != null ? option.defaultValue() : ""));
         field.setResponder(text -> config.builder.set(option.key(), text));
         return field;
@@ -174,7 +207,8 @@ public class ConfigScreen extends Screen {
         Object[] constants = option.type().getEnumConstants();
         Object current = option.currentValue() != null ? option.currentValue() : option.defaultValue();
         if (current == null && constants != null && constants.length > 0) current = constants[0];
-        CycleButton.Builder builder = CycleButton.builder(value -> Component.literal(value.toString()), current);
+        CycleButton.Builder builder = CycleButton.builder(value -> Component.literal(value.toString()), current)
+                .displayOnlyValue();
         if (constants != null) builder.withValues(constants);
         return builder.create(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(""),
                 (btn, value) -> config.builder.set(option.key(), value));
@@ -183,7 +217,7 @@ public class ConfigScreen extends Screen {
     private AbstractWidget buildListControl(ConfigOption<?> option, int x, int y) {
         Object currentRaw = option.currentValue() != null ? option.currentValue() : option.defaultValue();
         List<?> current = currentRaw instanceof List<?> list ? list : null;
-        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.key()));
+        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.displayName()));
         field.setMaxLength(2048);
         if (current != null) {
             StringBuilder joined = new StringBuilder();
@@ -232,6 +266,9 @@ public class ConfigScreen extends Screen {
         for (LabelEntry entry : visibleLabels) {
             graphics.text(font, entry.label, entry.x, entry.y, 0xFFFFFFFF);
         }
+        for (HeadingEntry entry : visibleHeadings) {
+            graphics.centeredText(font, entry.text(), entry.x(), entry.y(), 0xFFAAAAAA);
+        }
     }
 
     @Override
@@ -241,5 +278,8 @@ public class ConfigScreen extends Screen {
     }
 
     private record LabelEntry(String label, int x, int y) {
+    }
+
+    private record HeadingEntry(String text, int x, int y) {
     }
 }

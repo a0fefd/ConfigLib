@@ -28,11 +28,18 @@ public class Config {
         for (ConfigOption<?> option : builder.getOptionList()) {
             data.put(option.key(), option.currentValue());
         }
+        Path file = CONFIG_DIR.resolve(MOD_ID + ".json");
         try {
-            Path file = CONFIG_DIR.resolve(MOD_ID + ".json");
             Files.writeString(file, gson.toJson(data));
-        } catch (IOException e) {
-            //
+        } catch (IOException | RuntimeException e) {
+            // A broken file (partial write, bad permissions, whatever left it in a state
+            // that keeps failing) must not linger forever; drop it and try once more clean.
+            try {
+                Files.deleteIfExists(file);
+                Files.writeString(file, gson.toJson(data));
+            } catch (IOException | RuntimeException ignored) {
+                //
+            }
         }
     }
 
@@ -40,16 +47,28 @@ public class Config {
         Path file = CONFIG_DIR.resolve(MOD_ID + ".json");
         if (!Files.exists(file)) return;
         try {
-            JsonElement json = JsonParser.parseString(Files.readString(file));
-            JsonObject object = json.getAsJsonObject();
-            for (ConfigOption<?> option : builder.getOptionList()) {
-                if (object.has(option.key())) {
-                    Object value = gson.fromJson(object.get(option.key()), option.type());
-                    builder.set(option.key(), value);
-                }
+            applyFrom(file);
+        } catch (IOException | RuntimeException e) {
+            // Malformed JSON — bad syntax, wrong shape after an option's type changed,
+            // whatever — must not crash the game at startup. Drop the file and fall back
+            // to whatever defaults ConfigManager already set; save() writes a clean file
+            // again next time an option changes.
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException ignored) {
+                //
             }
-        } catch (IOException e) {
-            //
+        }
+    }
+
+    private void applyFrom(Path file) throws IOException {
+        JsonElement json = JsonParser.parseString(Files.readString(file));
+        JsonObject object = json.getAsJsonObject();
+        for (ConfigOption<?> option : builder.getOptionList()) {
+            if (object.has(option.key())) {
+                Object value = gson.fromJson(object.get(option.key()), option.type());
+                builder.set(option.key(), value);
+            }
         }
     }
 }
