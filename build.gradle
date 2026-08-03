@@ -20,6 +20,7 @@ loom {
 	mods {
 		"configlib" {
 			sourceSet sourceSets.main
+			sourceSet sourceSets.client
 		}
 	}
 }
@@ -65,36 +66,19 @@ jar {
 	}
 }
 
-// configure the maven publication
-//publishing {
-//	publications {
-//		create("mavenJava", MavenPublication) {
-//			from components.java
-//		}
-//	}
-//
-//	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-//	repositories {
-//		// Add repositories to publish to here.
-//		// Notice: This block does NOT have the same function as the block in the top level.
-//		// The repositories here will be used for publishing your artifact, not for
-//		// retrieving dependencies.
-//	}
-//}
+// Published locally with `./gradlew publish`, then the build/repo directory is
+// pushed to the mvn-repo branch and served as a static Maven repo via
+// raw.githubusercontent.com. See README for the publish steps.
 publishing {
 	repositories {
 		maven {
-//			name = "GitHubPackages"
-//			url = uri("https://maven.pkg.github.com/a0fefd/ConfigLib")
-//			credentials {
-//				username = System.getenv("GITHUB_ACTOR")
-//				password = System.getenv("GITHUB_TOKEN")
-//			}
+			name = "static"
+			url = layout.buildDirectory.dir("repo")
 		}
 	}
-//	publications {
-//		gpr(MavenPublication) {
-//			from(components.java)
-//		}
-//	}
+	publications {
+		gpr(MavenPublication) {
+			from(components.java)
+		}
+	}
 }
