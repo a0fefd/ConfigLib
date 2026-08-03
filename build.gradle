@@ -66,35 +66,24 @@ jar {
 }
 
 // configure the maven publication
-//publishing {
-//	publications {
-//		create("mavenJava", MavenPublication) {
-//			from components.java
-//		}
-//	}
-//
-//	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-//	repositories {
-//		// Add repositories to publish to here.
-//		// Notice: This block does NOT have the same function as the block in the top level.
-//		// The repositories here will be used for publishing your artifact, not for
-//		// retrieving dependencies.
-//	}
-//}
+// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
 publishing {
 	repositories {
-		maven {
-//			name = "GitHubPackages"
-//			url = uri("https://maven.pkg.github.com/a0fefd/ConfigLib")
-//			credentials {
-//				username = System.getenv("GITHUB_ACTOR")
-//				password = System.getenv("GITHUB_TOKEN")
-//			}
+		// maven {
+		// 	name = "GitHubPackages"
+		// 	url = uri("https://maven.pkg.github.com/a0fefd/ConfigLib")
+		// 	credentials {
+		// 		username = System.getenv("GITHUB_ACTOR")
+		// 		password = System.getenv("GITHUB_TOKEN")
+		// 	}
+		// }
+		mavenLocal()
+		maven { url = layout.buildDirectory.dir("libs").get().asFile.toURI() }
+	}
+
+	publications {
+		gpr(MavenPublication) {
+			from(components.java)
 		}
 	}
-//	publications {
-//		gpr(MavenPublication) {
-//			from(components.java)
-//		}
-//	}
 }
