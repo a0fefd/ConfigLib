@@ -117,7 +117,7 @@ public class ConfigScreen extends Screen {
                 case Row.OptionRow optionRow -> {
                     ConfigOption<?> option = optionRow.option();
                     visibleLabels.add(new LabelEntry(option.displayName(), labelX, y + 6));
-                    addRenderableWidget(buildControl(option, controlX, y));
+                    addControl(option, controlX, y);
                 }
             }
             y += rowHeight;
@@ -135,15 +135,18 @@ public class ConfigScreen extends Screen {
         }
     }
 
+    // TUPLE needs several widgets in one row (one EditBox per entry), so this adds directly
+    // rather than returning a single AbstractWidget like the other option types.
     @SuppressWarnings("unchecked")
-    private AbstractWidget buildControl(ConfigOption<?> option, int x, int y) {
-        return switch (option.optionType()) {
-            case BOOL -> buildBoolControl((ConfigOption<Boolean>) option, x, y);
-            case NUM -> buildNumControl(option, x, y);
-            case ENUM -> buildEnumControl(option, x, y);
-            case LIST -> buildListControl(option, x, y);
-            case STR -> buildStrControl((ConfigOption<String>) option, x, y);
-        };
+    private void addControl(ConfigOption<?> option, int x, int y) {
+        switch (option.optionType()) {
+            case BOOL -> addRenderableWidget(buildBoolControl((ConfigOption<Boolean>) option, x, y));
+            case NUM -> addRenderableWidget(buildNumControl(option, x, y));
+            case ENUM -> addRenderableWidget(buildEnumControl(option, x, y));
+            case LIST -> addRenderableWidget(buildListControl(option, x, y));
+            case STR -> addRenderableWidget(buildStrControl((ConfigOption<String>) option, x, y));
+            case TUPLE -> addTupleControl(option, x, y);
+        }
     }
 
     private AbstractWidget buildBoolControl(ConfigOption<Boolean> option, int x, int y) {
@@ -223,7 +226,7 @@ public class ConfigScreen extends Screen {
             StringBuilder joined = new StringBuilder();
             for (int i = 0; i < current.size(); i++) {
                 if (i > 0) joined.append(", ");
-                joined.append(current.get(i));
+                joined.append(clampElement(current.get(i), option));
             }
             field.setValue(joined.toString());
         }
@@ -231,11 +234,45 @@ public class ConfigScreen extends Screen {
             List<Object> values = new ArrayList<>();
             for (String part : text.split(",")) {
                 String trimmed = part.trim();
-                if (!trimmed.isEmpty()) values.add(parseListElement(trimmed));
+                if (!trimmed.isEmpty()) values.add(clampElement(parseListElement(trimmed), option));
             }
             config.builder.set(option.key(), values);
         });
         return field;
+    }
+
+    // Fixed-arity sibling of LIST: one EditBox per entry instead of one comma-joined field.
+    // Arity comes from whichever of currentValue/defaultValue is present — there's no
+    // separate "how many entries" field on ConfigOption, so an empty default can't be
+    // widened later; it just renders as a single box.
+    private void addTupleControl(ConfigOption<?> option, int x, int y) {
+        List<?> currentRaw = option.currentValue() instanceof List<?> l ? l
+                : option.defaultValue() instanceof List<?> d ? d : List.of();
+        int count = Math.max(1, currentRaw.size());
+
+        List<Object> backing = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            backing.add(clampElement(i < currentRaw.size() ? currentRaw.get(i) : 0.0, option));
+        }
+
+        int gap = 2;
+        int boxWidth = (CONTROL_WIDTH - gap * (count - 1)) / count;
+        for (int i = 0; i < count; i++) {
+            int index = i;
+            int boxX = x + i * (boxWidth + gap);
+            EditBox field = new EditBox(font, boxX, y, boxWidth, ENTRY_HEIGHT - 2,
+                    Component.literal(option.displayName() + " " + i));
+            field.setValue(formatTupleElement(backing.get(i)));
+            field.setResponder(text -> {
+                backing.set(index, clampElement(parseListElement(text.trim()), option));
+                config.builder.set(option.key(), new ArrayList<>(backing));
+            });
+            addRenderableWidget(field);
+        }
+    }
+
+    private static String formatTupleElement(Object value) {
+        return value instanceof Number n ? formatNum(n.doubleValue()) : String.valueOf(value);
     }
 
     // List elements have no per-element type info (ConfigOption<T> only carries one Class<T> for
@@ -247,6 +284,17 @@ public class ConfigScreen extends Screen {
         } catch (NumberFormatException ignored) {
             return text;
         }
+    }
+
+    // Applies to LIST/TUPLE only — option.min()/max() bound each entry here, unlike NUM
+    // where they bound the option's single value. Non-numeric entries (STR-ish LIST use)
+    // pass through untouched.
+    private static Object clampElement(Object value, ConfigOption<?> option) {
+        if (!(value instanceof Number n)) return value;
+        double d = n.doubleValue();
+        if (option.min() != null) d = Math.max(d, option.min().doubleValue());
+        if (option.max() != null) d = Math.min(d, option.max().doubleValue());
+        return d;
     }
 
     @Override

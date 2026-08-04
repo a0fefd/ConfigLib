@@ -103,6 +103,21 @@ public record ConfigOption<T>(
     ) {
         this(key, category, null, null, defaultValue, defaultValue, type, optionType, min, max);
     }
+    // min/max here bound each NUMERIC ENTRY for LIST/TUPLE (e.g. clamping colour components
+    // to 0-255), not the option as a whole the way they do for NUM.
+    public ConfigOption(
+            String key,
+            String category,
+            @Nullable String subCategory,
+            @Nullable String displayName,
+            @Nullable T defaultValue,
+            Class<T> type,
+            ConfigOptionType optionType,
+            @Nullable Number min,
+            @Nullable Number max
+    ) {
+        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, min, max);
+    }
     public ConfigOption(
             String key,
             @Nullable T defaultValue,
