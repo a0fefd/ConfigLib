@@ -84,11 +84,11 @@
         {
           "name": "configlib-1.0.1-sources.jar",
           "url": "configlib-1.0.1-sources.jar",
-          "size": 14091,
-          "sha512": "27909edd88c1a0c2cb7cb676f879609b16b1e4800956c43340175e84d2e157c1ec42f8df23f54999973cf98f9fd2829fe73b2bd592c82bd70eb69ca5bcb3eea1",
-          "sha256": "8ac910ba64215eaecb25123f2e16e051e9ac18e354c0045dc5959277ba0ce23a",
-          "sha1": "b312f9512c31dcf692dc62de1f392276416e2d98",
-          "md5": "e47bcff8bf1eff9186d0e69ade9e462f"
+          "size": 14092,
+          "sha512": "fd6aa167baac653679cd194b7846c728e9860abc44e836effeee1e6468eca31141fe143c8fa536b20feff1880c5efaa288ca9ecab95941e76ea9ca193bf3dc82",
+          "sha256": "0094e2b36501fd08c54f7f6b3bbf46ab874b0ad2608a5ed24b34fa36b92d7054",
+          "sha1": "2a2c0f5004f96bf912cd8a89ca34fca67140e4b7",
+          "md5": "1f6529d28e3d1b978e13ff39ff8b7411"
         }
       ]
     }
