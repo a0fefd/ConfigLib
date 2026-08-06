@@ -7,14 +7,24 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.Minecraft;
 
+import java.util.List;
+
 public class ConfigCommand {
     public static void register(Config config) {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                register(dispatcher, config));
+                register(dispatcher, config, config.MOD_ID));
+    }
+    public static void registerWithAlternatives(Config config, List<String> alternatives) {
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            register(dispatcher, config, config.MOD_ID);
+            for (String alt : alternatives) {
+                register(dispatcher, config, alt);
+            }
+        });
     }
 
-    private static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, Config config) {
-        dispatcher.register(ClientCommands.literal(config.MOD_ID)
+    private static void register(CommandDispatcher<FabricClientCommandSource> dispatcher, Config config, String command) {
+        dispatcher.register(ClientCommands.literal(command)
                 .executes(context -> {
                     // ChatScreen.sendMessage() closes itself with setScreen(null) right after this
                     // callback returns, which would immediately undo an open() called here.
