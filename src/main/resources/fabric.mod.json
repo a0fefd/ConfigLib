@@ -8,8 +8,8 @@
 		"a0fefd"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/a0fefd/ConfigLib",
+		"sources": "https://github.com/a0fefd/ConfigLib"
 	},
 	"license": "MIT",
 	"icon": "assets/configlib/icon.svg",
