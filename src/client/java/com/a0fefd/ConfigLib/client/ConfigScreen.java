@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class ConfigScreen extends Screen {
@@ -252,10 +253,10 @@ public class ConfigScreen extends Screen {
                     Component.literal(option.displayName() + " " + i));
             field.setMaxLength(256);
             field.setValue(formatTupleElement(backing.get(i)));
-            field.setResponder(text -> {
-                backing.set(index, clampElement(parseListElement(text.trim()), option));
+            field.setResponder(text -> parseListElement(text.trim(), option).ifPresent(value -> {
+                backing.set(index, clampElement(value, option));
                 config.builder.set(option.key(), new ArrayList<>(backing));
-            });
+            }));
             addRenderableWidget(field);
 
             addRenderableWidget(Button.builder(Component.literal("x"), btn -> {
@@ -272,9 +273,11 @@ public class ConfigScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("+"), btn -> {
                     String text = addField.getValue().trim();
                     if (text.isEmpty()) return;
-                    backing.add(clampElement(parseListElement(text), option));
-                    config.builder.set(option.key(), new ArrayList<>(backing));
-                    rebuildConfigWidgets();
+                    parseListElement(text, option).ifPresent(value -> {
+                        backing.add(clampElement(value, option));
+                        config.builder.set(option.key(), new ArrayList<>(backing));
+                        rebuildConfigWidgets();
+                    });
                 }).bounds(x + fieldWidth + LIST_GAP, addY, LIST_BUTTON_WIDTH, ENTRY_HEIGHT - 2)
                 .build());
     }
@@ -301,10 +304,10 @@ public class ConfigScreen extends Screen {
             EditBox field = new EditBox(font, boxX, y, boxWidth, ENTRY_HEIGHT - 2,
                     Component.literal(option.displayName() + " " + i));
             field.setValue(formatTupleElement(backing.get(i)));
-            field.setResponder(text -> {
-                backing.set(index, clampElement(parseListElement(text.trim()), option));
+            field.setResponder(text -> parseListElement(text.trim(), option).ifPresent(value -> {
+                backing.set(index, clampElement(value, option));
                 config.builder.set(option.key(), new ArrayList<>(backing));
-            });
+            }));
             addRenderableWidget(field);
         }
     }
@@ -313,14 +316,28 @@ public class ConfigScreen extends Screen {
         return value instanceof Number n ? formatNum(n.doubleValue()) : String.valueOf(value);
     }
 
-    // List elements have no per-element type info (ConfigOption<T> only carries one Class<T> for
-    // the whole list), and Gson round-trips JSON numbers as Double regardless of what was written,
-    // so numeric entries are kept as Double (matching NUM) rather than guessing Integer vs Double.
-    private static Object parseListElement(String text) {
+    // option.elementType() lets the caller force what a LIST/TUPLE entry parses as, instead
+    // of guessing:
+    // - String.class: never attempt numeric parsing (e.g. a list of ids that could
+    //   theoretically look numeric).
+    // - a Number subtype (Double.class, the usual choice — see clampElement/NUM, which also
+    //   always stores Double since Gson round-trips JSON numbers that way regardless of what
+    //   was written): reject non-numeric text entirely (empty return) instead of silently
+    //   falling back to storing a String. Every current consumer of a numeric LIST/TUPLE
+    //   (e.g. HUD position, colour swatches) casts straight to (Number) with no type check,
+    //   so a stored String there is a live ClassCastException at render time, not just a
+    //   display glitch.
+    // - null (no declared element type): keeps the original best-effort guess for backwards
+    //   compatibility with options that don't specify one.
+    private static Optional<Object> parseListElement(String text, ConfigOption<?> option) {
+        Class<?> elementType = option.elementType();
+        if (elementType == String.class) return Optional.of(text);
+
         try {
-            return Double.parseDouble(text);
-        } catch (NumberFormatException ignored) {
-            return text;
+            return Optional.of(Double.parseDouble(text));
+        } catch (NumberFormatException e) {
+            if (elementType != null && Number.class.isAssignableFrom(elementType)) return Optional.empty();
+            return Optional.of(text);
         }
     }
 
