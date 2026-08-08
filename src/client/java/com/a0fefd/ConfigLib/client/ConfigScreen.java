@@ -2,6 +2,7 @@ package com.a0fefd.ConfigLib.client;
 
 import com.a0fefd.ConfigLib.Config;
 import com.a0fefd.ConfigLib.ConfigOption;
+import com.a0fefd.ConfigLib.ConfigOptionType;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -56,7 +57,7 @@ public class ConfigScreen extends Screen {
             return index != null ? index : Integer.MAX_VALUE;
         }));
         if (selectedCategory == null || !categories.contains(selectedCategory)) {
-            selectedCategory = categories.isEmpty() ? null : categories.get(0);
+            selectedCategory = categories.isEmpty() ? null : categories.getFirst();
         }
         rebuildConfigWidgets();
     }
@@ -68,7 +69,7 @@ public class ConfigScreen extends Screen {
 
         int tabX = 8;
         for (String category : categories) {
-            int tabWidth = Math.min(150, Math.max(50, font.width(category) + 16));
+            int tabWidth = Math.clamp(font.width(category) + 16, 50, 150);
             boolean selected = category.equals(selectedCategory);
             Button tabButton = Button.builder(Component.literal(category), btn -> {
                 selectedCategory = category;
@@ -100,13 +101,13 @@ public class ConfigScreen extends Screen {
         }
 
         int totalHeight = 0;
-        for (Row row : rows) totalHeight += row instanceof Row.Heading ? HEADING_HEIGHT : ENTRY_HEIGHT;
+        for (Row row : rows) totalHeight += rowHeight(row);
         int maxScroll = Math.max(0, totalHeight - (listBottom - LIST_TOP));
-        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        scrollOffset = Math.clamp(scrollOffset, 0, maxScroll);
 
         int y = LIST_TOP - scrollOffset;
         for (Row row : rows) {
-            int rowHeight = row instanceof Row.Heading ? HEADING_HEIGHT : ENTRY_HEIGHT;
+            int rowHeight = rowHeight(row);
             if (y + rowHeight < LIST_TOP || y > listBottom) {
                 y += rowHeight;
                 continue;
@@ -135,15 +136,29 @@ public class ConfigScreen extends Screen {
         }
     }
 
-    // TUPLE needs several widgets in one row (one EditBox per entry), so this adds directly
-    // rather than returning a single AbstractWidget like the other option types.
+    // LIST renders one row per entry plus a trailing "add" row (see addListControl), so its
+    // height is dynamic — every other row type is a fixed single line.
+    private int rowHeight(Row row) {
+        if (row instanceof Row.Heading) return HEADING_HEIGHT;
+        ConfigOption<?> option = ((Row.OptionRow) row).option();
+        if (option.optionType() != ConfigOptionType.LIST) return ENTRY_HEIGHT;
+        return (listEntries(option).size() + 1) * ENTRY_HEIGHT;
+    }
+
+    private static List<?> listEntries(ConfigOption<?> option) {
+        Object currentRaw = option.currentValue() != null ? option.currentValue() : option.defaultValue();
+        return currentRaw instanceof List<?> list ? list : List.of();
+    }
+
+    // TUPLE and LIST need several widgets in one control block, so this adds directly rather
+    // than returning a single AbstractWidget like the other option types.
     @SuppressWarnings("unchecked")
     private void addControl(ConfigOption<?> option, int x, int y) {
         switch (option.optionType()) {
             case BOOL -> addRenderableWidget(buildBoolControl((ConfigOption<Boolean>) option, x, y));
             case NUM -> addRenderableWidget(buildNumControl(option, x, y));
             case ENUM -> addRenderableWidget(buildEnumControl(option, x, y));
-            case LIST -> addRenderableWidget(buildListControl(option, x, y));
+            case LIST -> addListControl(option, x, y);
             case STR -> addRenderableWidget(buildStrControl((ConfigOption<String>) option, x, y));
             case TUPLE -> addTupleControl(option, x, y);
         }
@@ -217,28 +232,51 @@ public class ConfigScreen extends Screen {
                 (btn, value) -> config.builder.set(option.key(), value));
     }
 
-    private AbstractWidget buildListControl(ConfigOption<?> option, int x, int y) {
-        Object currentRaw = option.currentValue() != null ? option.currentValue() : option.defaultValue();
-        List<?> current = currentRaw instanceof List<?> list ? list : null;
-        EditBox field = new EditBox(font, x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2, Component.literal(option.displayName()));
-        field.setMaxLength(2048);
-        if (current != null) {
-            StringBuilder joined = new StringBuilder();
-            for (int i = 0; i < current.size(); i++) {
-                if (i > 0) joined.append(", ");
-                joined.append(clampElement(current.get(i), option));
-            }
-            field.setValue(joined.toString());
+    // One row per entry (each with its own remove button) plus a trailing add row, instead
+    // of TUPLE's fixed-arity single row — LIST's arity is unbounded, so entries stack
+    // vertically rather than cramming into ever-narrower boxes on one line. Editing an
+    // entry updates it in place with no rebuild; adding/removing changes row count, so
+    // those rebuild the whole screen (see rowHeight, which this must stay consistent with).
+    private static final int LIST_BUTTON_WIDTH = 16;
+    private static final int LIST_GAP = 2;
+
+    private void addListControl(ConfigOption<?> option, int x, int y) {
+        List<Object> backing = new ArrayList<>(listEntries(option));
+        int fieldWidth = CONTROL_WIDTH - LIST_BUTTON_WIDTH - LIST_GAP;
+
+        for (int i = 0; i < backing.size(); i++) {
+            int index = i;
+            int rowY = y + i * ENTRY_HEIGHT;
+
+            EditBox field = new EditBox(font, x, rowY, fieldWidth, ENTRY_HEIGHT - 2,
+                    Component.literal(option.displayName() + " " + i));
+            field.setMaxLength(256);
+            field.setValue(formatTupleElement(backing.get(i)));
+            field.setResponder(text -> {
+                backing.set(index, clampElement(parseListElement(text.trim()), option));
+                config.builder.set(option.key(), new ArrayList<>(backing));
+            });
+            addRenderableWidget(field);
+
+            addRenderableWidget(Button.builder(Component.literal("x"), btn -> {
+                        backing.remove(index);
+                        config.builder.set(option.key(), new ArrayList<>(backing));
+                        rebuildConfigWidgets();
+                    }).bounds(x + fieldWidth + LIST_GAP, rowY, LIST_BUTTON_WIDTH, ENTRY_HEIGHT - 2)
+                    .build());
         }
-        field.setResponder(text -> {
-            List<Object> values = new ArrayList<>();
-            for (String part : text.split(",")) {
-                String trimmed = part.trim();
-                if (!trimmed.isEmpty()) values.add(clampElement(parseListElement(trimmed), option));
-            }
-            config.builder.set(option.key(), values);
-        });
-        return field;
+
+        int addY = y + backing.size() * ENTRY_HEIGHT;
+        EditBox addField = new EditBox(font, x, addY, fieldWidth, ENTRY_HEIGHT - 2, Component.literal("Add entry"));
+        addRenderableWidget(addField);
+        addRenderableWidget(Button.builder(Component.literal("+"), btn -> {
+                    String text = addField.getValue().trim();
+                    if (text.isEmpty()) return;
+                    backing.add(clampElement(parseListElement(text), option));
+                    config.builder.set(option.key(), new ArrayList<>(backing));
+                    rebuildConfigWidgets();
+                }).bounds(x + fieldWidth + LIST_GAP, addY, LIST_BUTTON_WIDTH, ENTRY_HEIGHT - 2)
+                .build());
     }
 
     // Fixed-arity sibling of LIST: one EditBox per entry instead of one comma-joined field.
