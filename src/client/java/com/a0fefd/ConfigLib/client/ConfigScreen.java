@@ -118,7 +118,11 @@ public class ConfigScreen extends Screen {
                 case Row.Heading heading -> visibleHeadings.add(new HeadingEntry(heading.text(), centerX, y + 6));
                 case Row.OptionRow optionRow -> {
                     ConfigOption<?> option = optionRow.option();
-                    visibleLabels.add(new LabelEntry(option.displayName(), labelX, y + 6));
+                    // BUTTON has no separate value to label — its display name is the
+                    // button's own text instead of a row label.
+                    if (option.optionType() != ConfigOptionType.BUTTON) {
+                        visibleLabels.add(new LabelEntry(option.displayName(), labelX, y + 6));
+                    }
                     addControl(option, controlX, y);
                 }
             }
@@ -162,7 +166,14 @@ public class ConfigScreen extends Screen {
             case LIST -> addListControl(option, x, y);
             case STR -> addRenderableWidget(buildStrControl((ConfigOption<String>) option, x, y));
             case TUPLE -> addTupleControl(option, x, y);
+            case BUTTON -> addRenderableWidget(buildButtonControl(option, x, y));
         }
+    }
+
+    private AbstractWidget buildButtonControl(ConfigOption<?> option, int x, int y) {
+        return Button.builder(Component.literal(option.displayName()), btn -> {
+            if (option.action() != null) option.action().run();
+        }).bounds(x, y, CONTROL_WIDTH, ENTRY_HEIGHT - 2).build();
     }
 
     private AbstractWidget buildBoolControl(ConfigOption<Boolean> option, int x, int y) {

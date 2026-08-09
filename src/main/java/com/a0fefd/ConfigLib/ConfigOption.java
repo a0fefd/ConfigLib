@@ -13,7 +13,8 @@ public record ConfigOption<T>(
         ConfigOptionType optionType,
         @Nullable Number min,
         @Nullable Number max,
-        @Nullable Class<?> elementType
+        @Nullable Class<?> elementType,
+        @Nullable Runnable action
 ) {
     public static final String DEFAULT_CATEGORY = "General";
 
@@ -32,7 +33,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, category, null, null, defaultValue, defaultValue, type, optionType, null, null, null);
+        this(key, category, null, null, defaultValue, defaultValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -42,7 +43,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, category, subCategory, null, defaultValue, defaultValue, type, optionType, null, null, null);
+        this(key, category, subCategory, null, defaultValue, defaultValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -53,7 +54,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, null, null, null);
+        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -61,7 +62,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, DEFAULT_CATEGORY, null, null, defaultValue, defaultValue, type, optionType, null, null, null);
+        this(key, DEFAULT_CATEGORY, null, null, defaultValue, defaultValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -70,7 +71,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, DEFAULT_CATEGORY, null, null, defaultValue, currentValue, type, optionType, null, null, null);
+        this(key, DEFAULT_CATEGORY, null, null, defaultValue, currentValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -80,7 +81,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, category, null, null, defaultValue, currentValue, type, optionType, null, null, null);
+        this(key, category, null, null, defaultValue, currentValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -91,7 +92,7 @@ public record ConfigOption<T>(
             Class<T> type,
             ConfigOptionType optionType
     ) {
-        this(key, category, subCategory, null, defaultValue, currentValue, type, optionType, null, null, null);
+        this(key, category, subCategory, null, defaultValue, currentValue, type, optionType, null, null, null, null);
     }
     public ConfigOption(
             String key,
@@ -102,7 +103,7 @@ public record ConfigOption<T>(
             @Nullable Number min,
             @Nullable Number max
     ) {
-        this(key, category, null, null, defaultValue, defaultValue, type, optionType, min, max, null);
+        this(key, category, null, null, defaultValue, defaultValue, type, optionType, min, max, null, null);
     }
     // min/max here bound each NUMERIC ENTRY for LIST/TUPLE (e.g. clamping colour components
     // to 0-255), not the option as a whole the way they do for NUM.
@@ -117,7 +118,7 @@ public record ConfigOption<T>(
             @Nullable Number min,
             @Nullable Number max
     ) {
-        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, min, max, null);
+        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, min, max, null, null);
     }
     public ConfigOption(
             String key,
@@ -127,7 +128,7 @@ public record ConfigOption<T>(
             @Nullable Integer min,
             @Nullable Integer max
     ) {
-        this(key, DEFAULT_CATEGORY, null, null, defaultValue, defaultValue, type, optionType, min, max, null);
+        this(key, DEFAULT_CATEGORY, null, null, defaultValue, defaultValue, type, optionType, min, max, null, null);
     }
     public ConfigOption(
             String key,
@@ -138,7 +139,7 @@ public record ConfigOption<T>(
             @Nullable Integer min,
             @Nullable Integer max
     ) {
-        this(key, DEFAULT_CATEGORY, null, null, defaultValue, currentValue, type, optionType, min, max, null);
+        this(key, DEFAULT_CATEGORY, null, null, defaultValue, currentValue, type, optionType, min, max, null, null);
     }
 
     // elementType constrains LIST/TUPLE element parsing (see ConfigScreen.parseListElement) —
@@ -155,7 +156,7 @@ public record ConfigOption<T>(
             ConfigOptionType optionType,
             @Nullable Class<?> elementType
     ) {
-        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, null, null, elementType);
+        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, null, null, elementType, null);
     }
     public ConfigOption(
             String key,
@@ -169,10 +170,25 @@ public record ConfigOption<T>(
             @Nullable Number min,
             @Nullable Number max
     ) {
-        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, min, max, elementType);
+        this(key, category, subCategory, displayName, defaultValue, defaultValue, type, optionType, min, max, elementType, null);
+    }
+
+    // BUTTON has no value at all — key/category/subCategory/displayName place it in the
+    // screen like any other row, but currentValue/defaultValue/type/min/max/elementType are
+    // all meaningless for it, so this is the one constructor that doesn't thread them through.
+    // Config.save()/load() skip BUTTON options entirely rather than persisting a null.
+    @SuppressWarnings("unchecked")
+    public ConfigOption(
+            String key,
+            String category,
+            @Nullable String subCategory,
+            String displayName,
+            Runnable action
+    ) {
+        this(key, category, subCategory, displayName, null, null, (Class<T>) (Class<?>) Void.class, ConfigOptionType.BUTTON, null, null, null, action);
     }
 
     public ConfigOption<T> withCurrentValue(@Nullable T currentValue) {
-        return new ConfigOption<>(key, category, subCategory, displayName, defaultValue, currentValue, type, optionType, min, max, elementType);
+        return new ConfigOption<>(key, category, subCategory, displayName, defaultValue, currentValue, type, optionType, min, max, elementType, action);
     }
 }

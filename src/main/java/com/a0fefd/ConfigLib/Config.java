@@ -26,6 +26,7 @@ public class Config {
     public void save() {
         Map<String, Object> data = new LinkedHashMap<>();
         for (ConfigOption<?> option : builder.getOptionList()) {
+            if (option.optionType() == ConfigOptionType.BUTTON) continue;
             data.put(option.key(), option.currentValue());
         }
         Path file = CONFIG_DIR.resolve(MOD_ID + ".json");
@@ -65,6 +66,7 @@ public class Config {
         JsonElement json = JsonParser.parseString(Files.readString(file));
         JsonObject object = json.getAsJsonObject();
         for (ConfigOption<?> option : builder.getOptionList()) {
+            if (option.optionType() == ConfigOptionType.BUTTON) continue;
             if (object.has(option.key())) {
                 Object value = gson.fromJson(object.get(option.key()), option.type());
                 builder.set(option.key(), value);
